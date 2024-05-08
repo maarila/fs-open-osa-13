@@ -16,7 +16,8 @@ const errorHandler = (error, request, response, next) => {
   if (error.name === 'SequelizeDatabaseError') {
     return response.status(400).send({ error: 'incorrect content' })
   } else if (error.name === 'SequelizeValidationError') {
-    return response.status(400).send({ error: 'empty content' })
+    const errorMessage = error.message.split(': ')[1]
+    return response.status(400).send({ error: errorMessage })
   }
 
   next(error)
