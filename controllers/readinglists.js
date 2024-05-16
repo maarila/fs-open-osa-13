@@ -8,6 +8,7 @@ const tokenExtractor = (req, res, next) => {
   if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
     try {
       req.decodedToken = jwt.verify(authorization.substring(7), SECRET)
+      req.token = authorization.substring(7)
     } catch (error) {
       console.log(error)
       return res.status(401).json({ error: 'token invalid' })
@@ -42,6 +43,16 @@ router.put(
   readinglistFinder,
   tokenExtractor,
   async (req, res, next) => {
+    const currentSession = await Session.findOne({
+      where: {
+        session: req.token,
+      },
+    })
+
+    if (!currentSession) {
+      return res.status(401).json({ error: 'requires login' })
+    }
+
     if (req.readinglist && req.body.read) {
       if (req.readinglist.userId === req.decodedToken.id) {
         req.readinglist.read = req.body.read

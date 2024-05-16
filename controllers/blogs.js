@@ -1,5 +1,5 @@
 const router = require('express').Router()
-const { User, Blog } = require('../models')
+const { User, Blog, Session } = require('../models')
 const jwt = require('jsonwebtoken')
 const { SECRET } = require('../util/config')
 const { Op } = require('sequelize')
@@ -9,6 +9,7 @@ const tokenExtractor = (req, res, next) => {
   if (authorization && authorization.toLowerCase().startsWith('bearer ')) {
     try {
       req.decodedToken = jwt.verify(authorization.substring(7), SECRET)
+      req.token = authorization.substring(7)
     } catch (error) {
       console.log(error)
       return res.status(401).json({ error: 'token invalid' })
@@ -56,6 +57,16 @@ router.get('/', async (req, res) => {
 
 router.post('/', tokenExtractor, async (req, res, next) => {
   try {
+    const currentSession = await Session.findOne({
+      where: {
+        session: req.token,
+      },
+    })
+
+    if (!currentSession) {
+      return res.status(401).json({ error: 'requires login' })
+    }
+
     const user = await User.findByPk(req.decodedToken.id)
 
     const blog = await Blog.create({
@@ -70,6 +81,16 @@ router.post('/', tokenExtractor, async (req, res, next) => {
 })
 
 router.delete('/:id', blogFinder, tokenExtractor, async (req, res) => {
+  const currentSession = await Session.findOne({
+    where: {
+      session: req.token,
+    },
+  })
+
+  if (!currentSession) {
+    return res.status(401).json({ error: 'requires login' })
+  }
+
   if (req.blog) {
     if (req.blog.userId === req.decodedToken.id) {
       await req.blog.destroy()
